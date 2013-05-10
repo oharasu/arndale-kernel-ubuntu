@@ -602,7 +602,7 @@
 
 	hdmi {
 		compatible = "samsung,exynos5-hdmi";
-		reg = <0x14530000 0x70000>;
+		reg = <0x14530000 0x70000>, <0x10040700 0x4>;
 		interrupts = <0 95 0>;
 		clocks = <&clock 333>, <&clock 136>, <&clock 137>,
 				<&clock 333>, <&clock 333>;
