@@ -1700,7 +1700,9 @@ static void hdmi_poweron(struct hdmi_context *hdata)
 
 	mutex_unlock(&hdata->hdmi_mutex);
 
-	regulator_bulk_enable(res->regul_count, res->regul_bulk);
+	if (regulator_bulk_enable(res->regul_count, res->regul_bulk))
+		DRM_DEBUG_KMS("failed to enable regulator bulk\n");
+
 	clk_prepare_enable(res->hdmiphy);
 	clk_prepare_enable(res->hdmi);
 	clk_prepare_enable(res->sclk_hdmi);
