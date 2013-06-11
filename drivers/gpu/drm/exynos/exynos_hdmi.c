@@ -1118,9 +1118,9 @@ static void hdmi_v13_timing_apply(struct hdmi_context *hdata)
 		hdmi_regs_dump(hdata, "timing apply");
 	}
 
-	clk_disable(hdata->res.sclk_hdmi);
+	clk_disable_unprepare(hdata->res.sclk_hdmi);
 	clk_set_parent(hdata->res.sclk_hdmi, hdata->res.sclk_hdmiphy);
-	clk_enable(hdata->res.sclk_hdmi);
+	clk_prepare_enable(hdata->res.sclk_hdmi);
 
 	/* enable HDMI and timing generator */
 	hdmi_reg_writemask(hdata, HDMI_CON_0, ~0, HDMI_EN);
@@ -1285,9 +1285,9 @@ static void hdmi_v14_timing_apply(struct hdmi_context *hdata)
 		hdmi_regs_dump(hdata, "timing apply");
 	}
 
-	clk_disable(hdata->res.sclk_hdmi);
+	clk_disable_unprepare(hdata->res.sclk_hdmi);
 	clk_set_parent(hdata->res.sclk_hdmi, hdata->res.sclk_hdmiphy);
-	clk_enable(hdata->res.sclk_hdmi);
+	clk_prepare_enable(hdata->res.sclk_hdmi);
 
 	/* enable HDMI and timing generator */
 	hdmi_reg_writemask(hdata, HDMI_CON_0, ~0, HDMI_EN);
@@ -1311,9 +1311,9 @@ static void hdmiphy_conf_reset(struct hdmi_context *hdata)
 	u8 buffer[2];
 	u32 reg;
 
-	clk_disable(hdata->res.sclk_hdmi);
+	clk_disable_unprepare(hdata->res.sclk_hdmi);
 	clk_set_parent(hdata->res.sclk_hdmi, hdata->res.sclk_pixel);
-	clk_enable(hdata->res.sclk_hdmi);
+	clk_prepare_enable(hdata->res.sclk_hdmi);
 
 	/* operation mode */
 	buffer[0] = 0x1f;
@@ -1700,9 +1700,9 @@ static void hdmi_poweron(struct hdmi_context *hdata)
 	mutex_unlock(&hdata->hdmi_mutex);
 
 	regulator_bulk_enable(res->regul_count, res->regul_bulk);
-	clk_enable(res->hdmiphy);
-	clk_enable(res->hdmi);
-	clk_enable(res->sclk_hdmi);
+	clk_prepare_enable(res->hdmiphy);
+	clk_prepare_enable(res->hdmi);
+	clk_prepare_enable(res->sclk_hdmi);
 
 	hdmiphy_poweron(hdata);
 }
@@ -1725,9 +1725,9 @@ static void hdmi_poweroff(struct hdmi_context *hdata)
 	hdmiphy_conf_reset(hdata);
 	hdmiphy_poweroff(hdata);
 
-	clk_disable(res->sclk_hdmi);
-	clk_disable(res->hdmi);
-	clk_disable(res->hdmiphy);
+	clk_disable_unprepare(res->sclk_hdmi);
+	clk_disable_unprepare(res->hdmi);
+	clk_disable_unprepare(res->hdmiphy);
 	regulator_bulk_disable(res->regul_count, res->regul_bulk);
 
 	mutex_lock(&hdata->hdmi_mutex);
