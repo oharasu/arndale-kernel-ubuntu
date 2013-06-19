@@ -1938,6 +1938,9 @@ static struct of_device_id hdmi_match_types[] = {
 		.compatible = "samsung,exynos5-hdmi",
 		.data	= (void	*)HDMI_TYPE14,
 	}, {
+		.compatible = "samsung,exynos4212-hdmi",
+		.data	= (void	*)HDMI_TYPE14,
+	}, {
 		/* end node */
 	}
 };
