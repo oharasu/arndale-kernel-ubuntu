@@ -52,6 +52,25 @@ struct s5p_ehci_hcd {
 
 #define to_s5p_ehci(hcd)      (struct s5p_ehci_hcd *)(hcd_to_ehci(hcd)->priv)
 
+static void s5p_setup_hub_gpio(struct platform_device *pdev, const char *propname, int level)
+{
+	int err;
+	int gpio;
+
+	if (!pdev->dev.of_node)
+		return;
+
+	gpio = of_get_named_gpio(pdev->dev.of_node, propname, 0);
+	if (!gpio_is_valid(gpio))
+		return;
+	err = gpio_request_one(gpio, level, "ehci_vbus_gpio");
+
+	if (err)
+		dev_err(&pdev->dev, "can't request ehci hub-reset gpio %d", gpio);
+	else
+		gpio_free(gpio);
+}
+
 static void s5p_setup_vbus_gpio(struct platform_device *pdev)
 {
 	struct device *dev = &pdev->dev;
@@ -65,10 +84,15 @@ static void s5p_setup_vbus_gpio(struct platform_device *pdev)
 	if (!gpio_is_valid(gpio))
 		return;
 
-	err = devm_gpio_request_one(dev, gpio, GPIOF_OUT_INIT_HIGH,
+	err = devm_gpio_request_one(dev, gpio, GPIOF_OUT_INIT_LOW,
 				    "ehci_vbus_gpio");
-	if (err)
+	if (err) {
 		dev_err(dev, "can't request ehci vbus gpio %d", gpio);
+		return;
+	}
+
+	mdelay(1);
+	__gpio_set_value(gpio, 1);
 }
 
 static int s5p_ehci_probe(struct platform_device *pdev)
@@ -92,8 +116,6 @@ static int s5p_ehci_probe(struct platform_device *pdev)
 	if (!pdev->dev.coherent_dma_mask)
 		pdev->dev.coherent_dma_mask = DMA_BIT_MASK(32);
 
-	s5p_setup_vbus_gpio(pdev);
-
 	hcd = usb_create_hcd(&s5p_ehci_hc_driver,
 			     &pdev->dev, dev_name(&pdev->dev));
 	if (!hcd) {
@@ -115,6 +137,8 @@ static int s5p_ehci_probe(struct platform_device *pdev)
 		s5p_ehci->phy = phy;
 		s5p_ehci->otg = phy->otg;
 	}
+
+	s5p_setup_vbus_gpio(pdev);
 
 	s5p_ehci->clk = devm_clk_get(&pdev->dev, "usbhost");
 
@@ -154,10 +178,17 @@ static int s5p_ehci_probe(struct platform_device *pdev)
 	if (s5p_ehci->otg)
 		s5p_ehci->otg->set_host(s5p_ehci->otg, &hcd->self);
 
+	s5p_setup_hub_gpio(pdev, "hub-reset", GPIOF_OUT_INIT_LOW);
+	s5p_setup_hub_gpio(pdev, "hub-connect", GPIOF_OUT_INIT_LOW);
+
 	if (s5p_ehci->phy)
 		usb_phy_init(s5p_ehci->phy);
 	else if (s5p_ehci->pdata->phy_init)
 		s5p_ehci->pdata->phy_init(pdev, USB_PHY_TYPE_HOST);
+
+	mdelay(1);
+	s5p_setup_hub_gpio(pdev, "hub-reset", GPIOF_OUT_INIT_HIGH);
+	s5p_setup_hub_gpio(pdev, "hub-connect", GPIOF_OUT_INIT_HIGH);
 
 	ehci = hcd_to_ehci(hcd);
 	ehci->caps = hcd->regs;
