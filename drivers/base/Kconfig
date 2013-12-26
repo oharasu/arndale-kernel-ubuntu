@@ -304,4 +304,6 @@ config KDS
 	help
 	  This option enables the generic kernel dependency system
 
+source "drivers/base/ump/Kconfig"
+
 endmenu
