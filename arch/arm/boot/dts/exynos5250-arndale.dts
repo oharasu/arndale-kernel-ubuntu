@@ -256,13 +256,14 @@
 					regulator-max-microvolt = <1200000>;
 					regulator-always-on;
 					regulator-boot-on;
-					op_mode = <1>;
+					/* Output ON/OFF controlled by PWRREQ */
+					regulator-op-mode = <1>;
 				};
 
 				buck4_reg: BUCK4 {
 					regulator-name = "vdd_g3d";
-					regulator-min-microvolt = <1000000>;
-					regulator-max-microvolt = <1000000>;
+					regulator-min-microvolt = <850000>;
+					regulator-max-microvolt = <1300000>;
 					regulator-boot-on;
 					op_mode = <1>;
 				};
