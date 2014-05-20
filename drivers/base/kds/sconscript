@@ -1,5 +1,5 @@
 #
-# (C) COPYRIGHT 2010-2012 ARM Limited. All rights reserved.
+# (C) COPYRIGHT 2010-2013 ARM Limited. All rights reserved.
 #
 # This program is free software and is provided to you under the terms of the
 # GNU General Public License version 2 as published by the Free Software
@@ -13,9 +13,15 @@
 #
 
 
+
 import os
 import re
 Import('env')
+
+#Android uses sync_pt to accomplish KDS functionality.
+#Midgard KDS is not used by Android
+if env['os'] == 'android':
+	Return()
 
 # If KDS is built into the kernel already we skip building the module ourselves
 linux_config_file = os.path.normpath(os.environ['KDIR']) + '/.config'
@@ -34,20 +40,13 @@ src = [Glob('#kernel/drivers/base/kds/*.c'), Glob('#kernel/include/linux/*.h'), 
 
 env.Append( CPPPATH = '#kernel/include' )
 
-arch = env['arch']
-# translate into something Linux understands
-if arch == 'x86_32':
-	arch = 'x86'
-elif 'arm' in arch:
-	arch = 'arm'
-
 if Glob('tests/sconscript'):
 	SConscript( 'tests/sconscript' )
 
 if env.GetOption('clean') :
 	# Clean KDS module
 	if build_kds:
-		env.Execute(Action("make ARCH=%s clean" % arch, '[CLEAN] kds'))
+		env.Execute(Action("make clean", '[CLEAN] kds'))
 		cmd = env.Command('$STATIC_LIB_PATH/kds.ko', src, [])
 		env.ProgTarget('kds', cmd)
 
@@ -58,13 +57,13 @@ if env.GetOption('clean') :
 else:
 	# Build KDS module
 	if build_kds:
-		makeAction=Action("cd ${SOURCE.dir} && make kds ARCH=%s && cp kds.ko $STATIC_LIB_PATH/" % arch, '$MAKECOMSTR')
+		makeAction=Action("cd ${SOURCE.dir} && make kds && cp kds.ko $STATIC_LIB_PATH/", '$MAKECOMSTR')
 		cmd = env.Command('$STATIC_LIB_PATH/kds.ko', src, [makeAction])
 		env.ProgTarget('kds', cmd)
 
 	# Build KDS test module
 	if int(env['unit']) == 1:
-		makeActionTest=Action("cd ${SOURCE.dir} && make kds_test ARCH=%s && cp kds_test.ko $STATIC_LIB_PATH/" %arch, '$MAKECOMSTR')
+		makeActionTest=Action("cd ${SOURCE.dir} && make kds_test && cp kds_test.ko $STATIC_LIB_PATH/", '$MAKECOMSTR')
 		cmdTest = env.Command('$STATIC_LIB_PATH/kds_test.ko', src, [makeActionTest])
 		env.ProgTarget('kds', cmdTest)
 		if build_kds:
