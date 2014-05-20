@@ -1,6 +1,6 @@
 /*
  *
- * (C) COPYRIGHT 2008-2013 ARM Limited. All rights reserved.
+ * (C) COPYRIGHT ARM Limited. All rights reserved.
  *
  * This program is free software and is provided to you under the terms of the
  * GNU General Public License version 2 as published by the Free Software
@@ -15,10 +15,13 @@
 
 
 
+
+
 #include <linux/ump-ioctl.h>
 #include <linux/ump.h>
 
 #include <asm/uaccess.h>	         /* copy_*_user */
+#include <linux/compat.h>
 #include <linux/module.h>            /* kernel module definitions */
 #include <linux/fs.h>                /* file system operations */
 #include <linux/cdev.h>              /* character device definitions */
@@ -438,10 +441,10 @@ static int do_ump_dd_msync_now(umpp_session * session, ump_k_msync * params)
 		if (it->id == params->secure_id)
 		{
 			/* found, do the cache op */
-#if defined CONFIG_64BIT && CONFIG_64BIT
+#ifdef CONFIG_64BIT
 			if (is_compat_task())
 			{
-				umpp_dd_cpu_msync_now(it->mem, params->cache_operation, params->mapped_ptr.compat_value, params->size);
+				umpp_dd_cpu_msync_now(it->mem, params->cache_operation, compat_ptr(params->mapped_ptr.compat_value), params->size);
 				result = 0;
 			}
 			else
@@ -449,7 +452,7 @@ static int do_ump_dd_msync_now(umpp_session * session, ump_k_msync * params)
 #endif
 				umpp_dd_cpu_msync_now(it->mem, params->cache_operation, params->mapped_ptr.value, params->size);
 				result = 0;
-#if defined CONFIG_64BIT && CONFIG_64BIT
+#ifdef CONFIG_64BIT
 			}
 #endif
 			break;
@@ -532,7 +535,7 @@ void ump_import_module_unregister(enum ump_external_memory_type type)
 	mutex_unlock(&import_list_lock);
 }
 
-static struct ump_import_handler * import_handler_get(int type_id)
+static struct ump_import_handler * import_handler_get(unsigned int type_id)
 {
 	enum ump_external_memory_type type;
 	struct ump_import_handler * handler;

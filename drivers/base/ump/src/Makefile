@@ -1,5 +1,5 @@
 #
-# (C) COPYRIGHT 2008-2012 ARM Limited. All rights reserved.
+# (C) COPYRIGHT 2008-2014 ARM Limited. All rights reserved.
 #
 # This program is free software and is provided to you under the terms of the
 # GNU General Public License version 2 as published by the Free Software
@@ -11,6 +11,7 @@
 # Boston, MA  02110-1301, USA.
 #
 #
+
 
 
 ifneq ($(KBUILD_EXTMOD),)
@@ -38,13 +39,7 @@ endif
 # Define host system directory
 KDIR-$(shell uname -m):=/lib/modules/$(shell uname -r)/build
 
-ifeq ($(ARCH), arm)
-	# Compiling for ARM
-	CONFIG ?= arm
-else
-	# Compiling for the host
-	CONFIG ?= $(shell uname -m)
-endif
+CONFIG ?= $(ARCH)
 
 # default cpu to select
 CPU ?= $(shell uname -m)
@@ -70,7 +65,7 @@ endif
 EXTRA_SYMBOLS=
 
 ifeq ($(MALI_UNIT_TEST),1)
-	KBASE_PATH=$(ROOT)/kernel/drivers/gpu/arm/t6xx/kbase
+	KBASE_PATH=$(ROOT)/kernel/drivers/gpu/arm/midgard
 	EXTRA_SYMBOLS+=$(KBASE_PATH)/tests/internal/src/kernel_assert_module/linux/Module.symvers
 endif
 KDS_PATH=$(ROOT)/kernel/drivers/base/kds

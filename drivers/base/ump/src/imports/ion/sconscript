@@ -1,5 +1,5 @@
 #
-# (C) COPYRIGHT 2010-2012 ARM Limited. All rights reserved.
+# (C) COPYRIGHT 2010-2013 ARM Limited. All rights reserved.
 #
 # This program is free software and is provided to you under the terms of the
 # GNU General Public License version 2 as published by the Free Software
@@ -11,6 +11,7 @@
 # Boston, MA  02110-1301, USA.
 #
 #
+
 
 
 import os
@@ -32,13 +33,7 @@ ion_src = [Glob('#kernel/drivers/base/ump/src/imports/ion/*.c')]
 if env_ion.GetOption('clean') :
 	makeAction=Action("cd ${SOURCE.dir} && make clean", '$MAKECOMSTR')
 else:
-	if env['arch'] == 'x86_32' :
-		env_ion['arch_linux'] = 'x86'
-	elif 'arm' in env['arch']:
-		env_ion['arch_linux'] = 'arm'
-	else:
-		env_ion['arch_linux'] = env['arch']
-	makeAction=Action("cd ${SOURCE.dir} && make ARCH=$arch_linux PLATFORM=${platform} && cp ump_ion_import.ko $STATIC_LIB_PATH/ump_ion_import.ko", '$MAKECOMSTR')
+	makeAction=Action("cd ${SOURCE.dir} && make PLATFORM=${platform} && cp ump_ion_import.ko $STATIC_LIB_PATH/ump_ion_import.ko", '$MAKECOMSTR')
 # The target is ump_import_ion.ko, built from the source in ion_src, via the action makeAction
 # ump_import_ion.ko will be copied to $STATIC_LIB_PATH after being built by the standard Linux
 # kernel build system, after which it can be installed to the directory specified if

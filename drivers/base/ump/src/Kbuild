@@ -13,6 +13,7 @@
 #
 
 
+
 # Paths required for build
 UMP_PATH = $(src)/../..
 UMP_DEVICEDRV_PATH = $(src)/.

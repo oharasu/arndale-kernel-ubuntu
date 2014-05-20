@@ -1,5 +1,5 @@
 #
-# (C) COPYRIGHT 2010-2012 ARM Limited. All rights reserved.
+# (C) COPYRIGHT 2010-2013 ARM Limited. All rights reserved.
 #
 # This program is free software and is provided to you under the terms of the
 # GNU General Public License version 2 as published by the Free Software
@@ -11,6 +11,7 @@
 # Boston, MA  02110-1301, USA.
 #
 #
+
 
 
 import os
@@ -32,16 +33,10 @@ env_ump.Append( CPPPATH='#kernel/drivers/base/ump/src/' )
 if env_ump.GetOption('clean') :
 	makeAction=Action("cd ${SOURCE.dir}/.. && make clean", '$MAKECOMSTR')
 else:
-	if env['arch'] == 'x86_32' :
-		env_ump['arch_linux'] = 'x86'
-	elif 'arm' in env['arch']:
-		env_ump['arch_linux'] = 'arm'
-	else:
-		env_ump['arch_linux'] = env['arch']
 	if env['unit'] == '1':
-		makeAction=Action("cd ${SOURCE.dir}/.. && make ARCH=$arch_linux MALI_UNIT_TEST=${unit} PLATFORM=${platform} %s && cp ump.ko $STATIC_LIB_PATH/ump.ko" % env.kernel_get_config_defines(), '$MAKECOMSTR')
+		makeAction=Action("cd ${SOURCE.dir}/.. && make MALI_UNIT_TEST=${unit} PLATFORM=${platform} %s && cp ump.ko $STATIC_LIB_PATH/ump.ko" % env.kernel_get_config_defines(), '$MAKECOMSTR')
 	else:
-		makeAction=Action("cd ${SOURCE.dir}/.. && make ARCH=$arch_linux PLATFORM=${platform} %s && cp ump.ko $STATIC_LIB_PATH/ump.ko" % env.kernel_get_config_defines(), '$MAKECOMSTR')
+		makeAction=Action("cd ${SOURCE.dir}/.. && make PLATFORM=${platform} %s && cp ump.ko $STATIC_LIB_PATH/ump.ko" % env.kernel_get_config_defines(), '$MAKECOMSTR')
 # The target is ump.ko, built from the source in ump_src, via the action makeAction
 # ump.ko will be copied to $STATIC_LIB_PATH after being built by the standard Linux
 # kernel build system, after which it can be installed to the directory specified if
@@ -51,18 +46,20 @@ cmd = env_ump.Command('$STATIC_LIB_PATH/ump.ko', ump_src, [makeAction])
 if env['unit'] == '1':
 	env.Depends('$STATIC_LIB_PATH/ump.ko', '$STATIC_LIB_PATH/libosk.a')
 
-# Add a dependency on kds.ko.
+# Add a dependency on kds.ko only when the build is not Android
+# Android uses sync_pt instead of Midgard KDS to achieve KDS functionality
 # Only necessary when KDS is not built into the kernel.
 #
-linux_config_file = os.path.normpath(os.environ['KDIR']) + '/.config'
-search_term = '^[\ ]*CONFIG_KDS[\ ]*=[\ ]*y'
-kds_in_kernel = 0
-for line in open(linux_config_file, 'r'):
-	if re.search(search_term, line):
-	        # KDS in kernel.
-		kds_in_kernel = 1
-if not kds_in_kernel:
-	env.Depends('$STATIC_LIB_PATH/ump.ko', '$STATIC_LIB_PATH/kds.ko')
+if env['os'] != 'android':
+	linux_config_file = os.path.normpath(os.environ['KDIR']) + '/.config'
+	search_term = '^[\ ]*CONFIG_KDS[\ ]*=[\ ]*y'
+	kds_in_kernel = 0
+	for line in open(linux_config_file, 'r'):
+		if re.search(search_term, line):
+			# KDS in kernel.
+			kds_in_kernel = 1
+	if not kds_in_kernel:
+		env.Depends('$STATIC_LIB_PATH/ump.ko', '$STATIC_LIB_PATH/kds.ko')
 
 # Until we fathom out how the invoke the Linux build system to clean, we can use Clean
 # to remove generated files.
