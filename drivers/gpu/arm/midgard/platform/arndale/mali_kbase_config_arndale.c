@@ -1,12 +1,15 @@
 /*
  *
- * (C) COPYRIGHT 2012 ARM Limited. All rights reserved.
+ * (C) COPYRIGHT ARM Limited. All rights reserved.
  *
- * This program is free software and is provided to you under the terms of the GNU General Public License version 2
- * as published by the Free Software Foundation, and any use by you of this program is subject to the terms of such GNU licence.
+ * This program is free software and is provided to you under the terms of the
+ * GNU General Public License version 2 as published by the Free Software
+ * Foundation, and any use by you of this program is subject to the terms
+ * of such GNU licence.
  *
- * A copy of the licence is included with the program, and can also be obtained from Free Software
- * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+ * A copy of the licence is included with the program, and can also be obtained
+ * from Free Software Foundation, Inc., 51 Franklin Street, Fifth Floor,
+ * Boston, MA  02110-1301, USA.
  *
  */
 
@@ -33,14 +36,13 @@
 #include <linux/fb.h>
 #include <linux/clk.h>
 #include <mach/regs-clock.h>
-//#include <mach/pmu.h>
-#include <../common.h>
+#include <mach/pmu.h>
 #include <mach/regs-pmu.h>
 #include <asm/delay.h>
 #include <mach/map.h>
 #include <generated/autoconf.h>
 #include <plat/cpu.h>
-#if defined(CONFIG_MALI_T6XX_DVFS) && defined(CONFIG_CPU_FREQ)
+#if defined(CONFIG_MALI_MIDGARD_DVFS) && defined(CONFIG_CPU_FREQ)
 #include <mach/asv-5250.h>
 #include <mach/asv-exynos.h>
 #endif
@@ -51,7 +53,7 @@
 #include <linux/regulator/consumer.h>
 #include <linux/regulator/driver.h>
 
-#include <mali_kbase_config.h>
+
 #include <mali_kbase.h>
 #include <mali_kbase_pm.h>
 #include <mali_kbase_uku.h>
@@ -60,15 +62,13 @@
 #include <mali_kbase_mem_linux.h>
 #include <mali_kbase_defs.h>
 
-//#include <kbase/src/linux/mali_kbase_config_linux.h>
-
 #include "mali_linux_dvfs_trace.h"
 
 #define MALI_DVFS_DEBUG 0
 #define MALI_DVFS_STEP 8
 #define MALI_DVFS_KEEP_STAY_CNT 10
 
-#ifdef CONFIG_MALI_T6XX_DVFS
+#ifdef CONFIG_MALI_MIDGARD_DVFS
 #define KBASE_PM_DVFS_FREQUENCY (100) /* 100ms */
 #ifdef CONFIG_CPU_FREQ
 #define MALI_DVFS_ASV_ENABLE
@@ -83,7 +83,7 @@
 #define HZ_IN_MHZ            (1000000)
 #define MALI_RTPM_DEBUG      0
 #define RUNTIME_PM_DELAY_TIME 10
-#define CONFIG_T6XX_HWVER_R0P0 1
+#define CONFIG_MIDGARD_HWVER_R0P0 1
 #define G3D_ASV_VOL_OFFSET	25000
 
 struct regulator *kbase_platform_get_regulator(void);
@@ -92,14 +92,14 @@ int kbase_platform_regulator_disable(void);
 int kbase_platform_regulator_enable(void);
 int kbase_platform_get_default_voltage(struct device *dev, int *vol);
 int kbase_platform_get_voltage(struct device *dev, int *vol);
-#if defined CONFIG_MALI_T6XX_DVFS
+#if defined CONFIG_MALI_MIDGARD_DVFS
 static int kbase_platform_set_voltage(struct device *dev, int vol);
 static void kbase_platform_dvfs_set_clock(kbase_device *kbdev, int freq);
 static void kbase_platform_dvfs_set_level(kbase_device *kbdev, int level);
 static int kbase_platform_dvfs_get_level(int freq);
 #endif
 
-#if defined(CONFIG_MALI_T6XX_DVFS) || defined(CONFIG_MALI_T6XX_DEBUG_SYS)
+#if defined(CONFIG_MALI_MIDGARD_DVFS) || defined(CONFIG_MALI_MIDGARD_DEBUG_SYS)
 struct mali_dvfs_info {
 	unsigned int voltage;
 	unsigned int clock;
@@ -111,7 +111,7 @@ struct mali_dvfs_info {
 static struct mali_dvfs_info *mali_dvfs_infotbl;
 #endif
 
-#ifdef CONFIG_MALI_T6XX_DVFS
+#ifdef CONFIG_MALI_MIDGARD_DVFS
 /*
  * Governor parameters.  The governor gets periodic samples of the
  * GPU utilisation (%busy) and maintains a weighted average over the
@@ -133,13 +133,15 @@ static struct mali_dvfs_info *mali_dvfs_infotbl;
 
 /* TODO(sleffler) should be const but for voltage */
 static struct mali_dvfs_info mali_dvfs_infotbl_exynos5250[MALI_DVFS_STEP] = {
-/* A duumy level is added in 5250 to make 8 levels. Since, max_threshold
- * value of step 6 is 100, the dvfs code will never come to dummy step 7
+/*
+ * A dummy level is added in 5250 and 5422 to make 8 levels. In 5250 since the
+ * max_threshold value of step 6 is 100, the dvfs code will never come to dummy
+ * step 7.
  */
 #if (MALI_DVFS_STEP == 8)
-	{ 912500, 100000000,  0,  60, DVFS_TIME_TO_CNT(750), DVFS_TIME_TO_CNT(2000)},
-	{ 925000, 160000000, 40,  75, DVFS_TIME_TO_CNT(750), DVFS_TIME_TO_CNT(2000)},
-	{1025000, 266000000, 65,  85, DVFS_TIME_TO_CNT(1000), DVFS_TIME_TO_CNT(3000)},
+	{ 912500, 100000000,  0,   0, DVFS_TIME_TO_CNT(0), DVFS_TIME_TO_CNT(0)},
+	{ 925000, 160000000,  0,   0, DVFS_TIME_TO_CNT(0), DVFS_TIME_TO_CNT(0)},
+	{1025000, 266000000,  0,  85, DVFS_TIME_TO_CNT(1000), DVFS_TIME_TO_CNT(3000)},
 	{1075000, 350000000, 65,  85, DVFS_TIME_TO_CNT(750), DVFS_TIME_TO_CNT(1500)},
 	{1125000, 400000000, 65,  85, DVFS_TIME_TO_CNT(750), DVFS_TIME_TO_CNT(1500)},
 	{1025000, 450000000, 65,  90, DVFS_TIME_TO_CNT(1000), DVFS_TIME_TO_CNT(1500)},
@@ -158,14 +160,39 @@ static struct mali_dvfs_info mali_dvfs_infotbl_exynos5420[MALI_DVFS_STEP] = {
 	{ 862500, 266000000, 65,  85, DVFS_TIME_TO_CNT(1000), DVFS_TIME_TO_CNT(3000)},
 	{ 900000, 350000000, 65,  85, DVFS_TIME_TO_CNT(750), DVFS_TIME_TO_CNT(1500)},
 	{ 937500, 420000000, 65,  85, DVFS_TIME_TO_CNT(750), DVFS_TIME_TO_CNT(1500)},
-	{ 950000, 480000000, 65,  90, DVFS_TIME_TO_CNT(1000), DVFS_TIME_TO_CNT(1500)},
-	{ 987500, 533000000, 75,  90, DVFS_TIME_TO_CNT(750), DVFS_TIME_TO_CNT(1500)},
+	{ 950000, 480000000, 65, 100, DVFS_TIME_TO_CNT(1000), DVFS_TIME_TO_CNT(1500)},
+	{ 987500, 533000000, 75, 100, DVFS_TIME_TO_CNT(750), DVFS_TIME_TO_CNT(1500)},
 	{1025000, 600000000, 75, 100, DVFS_TIME_TO_CNT(750), DVFS_TIME_TO_CNT(1500)}
 
 #else
 #error no table
 #endif
 };
+
+static struct mali_dvfs_info mali_dvfs_infotbl_exynos5422[MALI_DVFS_STEP] = {
+#if (MALI_DVFS_STEP == 8)
+	{  825000, 100000000,  0,  60, DVFS_TIME_TO_CNT(750),
+					DVFS_TIME_TO_CNT(2000)},
+	{  825000, 177000000, 40,  75, DVFS_TIME_TO_CNT(750),
+					DVFS_TIME_TO_CNT(2000)},
+	{  887500, 266000000, 65,  85, DVFS_TIME_TO_CNT(1000),
+					DVFS_TIME_TO_CNT(3000)},
+	{  912500, 350000000, 65,  85, DVFS_TIME_TO_CNT(750),
+					DVFS_TIME_TO_CNT(1500)},
+	{  937500, 420000000, 65,  85, DVFS_TIME_TO_CNT(750),
+					DVFS_TIME_TO_CNT(1500)},
+	{  975000, 480000000, 65, 100, DVFS_TIME_TO_CNT(1000),
+					DVFS_TIME_TO_CNT(1500)},
+	{ 1025000, 543000000, 75, 100, DVFS_TIME_TO_CNT(750),
+					DVFS_TIME_TO_CNT(1500)},
+	{ 1025000, 543000000, 75, 100, DVFS_TIME_TO_CNT(750),
+					DVFS_TIME_TO_CNT(1500)},
+
+#else
+#error no table
+#endif
+};
+
 int kbase_platform_dvfs_init(kbase_device *kbdev);
 void kbase_platform_dvfs_term(void);
 int kbase_platform_dvfs_get_control_status(void);
@@ -285,25 +312,25 @@ static const unsigned int mali_dvfs_vol_default_exynos5250[MALI_DVFS_STEP] = {
 
 static int kbase_platform_asv_set(int enable);
 #endif /* MALI_DVFS_ASV_ENABLE */
-#endif /* CONFIG_MALI_T6XX_DVFS */
+#endif /* CONFIG_MALI_MIDGARD_DVFS */
 
 int kbase_platform_cmu_pmu_control(struct kbase_device *kbdev, int control);
 void kbase_platform_remove_sysfs_file(struct device *dev);
 mali_error kbase_platform_init(struct kbase_device *kbdev);
-static int kbase_platform_is_power_on(void);
 void kbase_platform_term(struct kbase_device *kbdev);
+static void kbase_platform_dvfs_set_max(kbase_device *kbdev);
 
-#ifdef CONFIG_MALI_T6XX_DEBUG_SYS
+#ifdef CONFIG_MALI_MIDGARD_DEBUG_SYS
 static int kbase_platform_create_sysfs_file(struct device *dev);
 #ifdef CONFIG_MALI_HWC_TRACE
 static int mali_setup_system_tracing(struct device *dev);
 static void mali_cleanup_system_tracing(struct device *dev);
 #endif /* CONFIG_MALI_HWC_TRACE */
-#endif /* CONFIG_MALI_T6XX_DEBUG_SYS */
+#endif /* CONFIG_MALI_MIDGARD_DEBUG_SYS */
 
-#ifdef CONFIG_MALI_T6XX_DVFS
+#ifdef CONFIG_MALI_MIDGARD_DVFS
 static struct mali_dvfs_status mali_dvfs_status_current;
-#endif /* CONFIG_MALI_T6XX_DVFS */
+#endif /* CONFIG_MALI_MIDGARD_DVFS */
 
 struct exynos_context
 {
@@ -314,19 +341,6 @@ struct exynos_context
 	struct clk *sclk_g3d;
 	int t6xx_default_clock;
 };
-#ifndef CONFIG_OF
-static kbase_io_resources io_resources_exynos5250 =
-{
-        .job_irq_number   = EXYNOS5_JOB_IRQ_NUMBER,
-        .mmu_irq_number   = EXYNOS5_MMU_IRQ_NUMBER,
-        .gpu_irq_number   = EXYNOS5_GPU_IRQ_NUMBER,
-        .io_memory_region =
-        {
-                .start = EXYNOS5_PA_G3D,
-                .end   = EXYNOS5_PA_G3D + (4096 * 5) - 1
-        }
-};
-#endif
 
 /**
  * Read the CPU clock speed
@@ -364,10 +378,20 @@ static void pm_callback_power_off(kbase_device *kbdev)
 #endif /* CONFIG_PM_RUNTIME */
 }
 
+/**
+ * Power Management callback - suspend
+ */
+static void pm_callback_suspend(kbase_device *kbdev)
+{
+	//kbase_platform_dvfs_set_max(kbdev);
+}
+
 static kbase_pm_callback_conf pm_callbacks =
 {
 	.power_on_callback = pm_callback_power_on,
 	.power_off_callback = pm_callback_power_off,
+	.power_suspend_callback = pm_callback_suspend,
+	.power_resume_callback = NULL
 };
 
 /**
@@ -377,12 +401,12 @@ mali_bool kbase_platform_exynos5_init(kbase_device *kbdev)
 {
 	if(MALI_ERROR_NONE == kbase_platform_init(kbdev))
 	{
-#ifdef CONFIG_MALI_T6XX_DEBUG_SYS
-		if(kbase_platform_create_sysfs_file(kbdev->osdev.dev))
+#ifdef CONFIG_MALI_MIDGARD_DEBUG_SYS
+		if(kbase_platform_create_sysfs_file(kbdev->dev))
 		{
 			return MALI_TRUE;
 		}
-#endif /* CONFIG_MALI_T6XX_DEBUG_SYS */
+#endif /* CONFIG_MALI_MIDGARD_DEBUG_SYS */
 		return MALI_TRUE;
 	}
 
@@ -394,9 +418,9 @@ mali_bool kbase_platform_exynos5_init(kbase_device *kbdev)
  */
 void kbase_platform_exynos5_term(kbase_device *kbdev)
 {
-#ifdef CONFIG_MALI_T6XX_DEBUG_SYS
-	kbase_platform_remove_sysfs_file(kbdev->osdev.dev);
-#endif /* CONFIG_MALI_T6XX_DEBUG_SYS */
+#ifdef CONFIG_MALI_MIDGARD_DEBUG_SYS
+	kbase_platform_remove_sysfs_file(kbdev->dev);
+#endif /* CONFIG_MALI_MIDGARD_DEBUG_SYS */
 	kbase_platform_term(kbdev);
 }
 
@@ -407,27 +431,16 @@ kbase_platform_funcs_conf platform_funcs =
 };
 
 const kbase_attribute config_attributes_exynos5250[] = {
-#if 0
-	{
-		KBASE_CONFIG_ATTR_MEMORY_OS_SHARED_MAX,
-		2048 * 1024 * 1024UL /* 2048MB */
-	},
-
-	{
-		KBASE_CONFIG_ATTR_MEMORY_OS_SHARED_PERF_GPU,
-		KBASE_MEM_PERF_FAST
-	},
-#endif
 	{
 		KBASE_CONFIG_ATTR_POWER_MANAGEMENT_CALLBACKS,
 		(uintptr_t)&pm_callbacks
 	},
-#ifdef CONFIG_MALI_T6XX_DVFS
+#ifdef CONFIG_MALI_MIDGARD_DVFS
 	{
 		KBASE_CONFIG_ATTR_POWER_MANAGEMENT_DVFS_FREQ,
 		KBASE_PM_DVFS_FREQUENCY /* 100ms */
 	},
-#endif /* CONFIG_MALI_T6XX_DVFS */
+#endif /* CONFIG_MALI_MIDGARD_DVFS */
 	{
 		KBASE_CONFIG_ATTR_PLATFORM_FUNCS,
 		(uintptr_t)&platform_funcs
@@ -456,23 +469,11 @@ const kbase_attribute config_attributes_exynos5250[] = {
 };
 
 const kbase_attribute config_attributes_exynos5420[] = {
-#if 0	
-	{
-		KBASE_CONFIG_ATTR_MEMORY_OS_SHARED_MAX,
-		2048 * 1024 * 1024UL /* 2048MB */
-		/* TODO: Once we have 4GB available we can change this*/
-	},
-
-	{
-		KBASE_CONFIG_ATTR_MEMORY_OS_SHARED_PERF_GPU,
-		KBASE_MEM_PERF_FAST
-	},
-#endif
 	{
 		KBASE_CONFIG_ATTR_POWER_MANAGEMENT_CALLBACKS,
 		(uintptr_t)&pm_callbacks
 	},
-#ifdef CONFIG_MALI_T6XX_DVFS
+#ifdef CONFIG_MALI_MIDGARD_DVFS
 	{
 		KBASE_CONFIG_ATTR_POWER_MANAGEMENT_DVFS_FREQ,
 		KBASE_PM_DVFS_FREQUENCY /* 100ms */
@@ -505,20 +506,17 @@ const kbase_attribute config_attributes_exynos5420[] = {
 	}
 };
 
-kbase_platform_config chromebook_platform_config;
-kbase_platform_config *kbase_get_platform_config(void) {
+kbase_platform_config platform_config;
+
+kbase_platform_config *kbase_get_platform_config(void)
+{
 	if (soc_is_exynos5250())
-    {
+		platform_config.attributes = config_attributes_exynos5250;
+	else if (soc_is_exynos542x())
+		platform_config.attributes = config_attributes_exynos5420;
 
-            chromebook_platform_config.attributes = config_attributes_exynos5250;
-#ifndef CONFIG_OF
-            chromebook_platform_config.io_resources = &io_resources_exynos5250;
-#endif
-            chromebook_platform_config.midgard_type = KBASE_MALI_T604;
-            return &chromebook_platform_config;
-    }
-
-   return NULL;
+	platform_config.midgard_type = KBASE_MALI_T604;
+	return &platform_config;
 }
 
 static struct clk *clk_g3d = NULL;
@@ -531,6 +529,7 @@ static int kbase_platform_power_clock_init(kbase_device *kbdev)
 	struct device *dev =  kbdev->dev;
 	int timeout;
 	struct exynos_context *platform;
+	void *g3d_status_reg;
 
 	platform = (struct exynos_context *) kbdev->platform_context;
 	if(NULL == platform)
@@ -539,11 +538,18 @@ static int kbase_platform_power_clock_init(kbase_device *kbdev)
 	}
 
 	/* Turn on G3D power */
-	__raw_writel(0x7, EXYNOS5_G3D_CONFIGURATION);
+	if (soc_is_exynos5250()) {
+		g3d_status_reg = EXYNOS5_G3D_STATUS;
+		__raw_writel(0x7, EXYNOS5_G3D_CONFIGURATION);
+	}
+	else if (soc_is_exynos542x()) {
+		g3d_status_reg = EXYNOS5420_G3D_STATUS;
+		__raw_writel(0x7, EXYNOS5420_G3D_CONFIGURATION);
+	}
 
 	/* Wait for G3D power stability for 1ms */
 	timeout = 10;
-	while((__raw_readl(EXYNOS5_G3D_STATUS) & 0x7) != 0x7) {
+	while((__raw_readl(g3d_status_reg) & 0x7) != 0x7) {
 		if(timeout == 0) {
 			/* need to call panic  */
 			panic("failed to turn on g3d power\n");
@@ -567,13 +573,13 @@ static int kbase_platform_power_clock_init(kbase_device *kbdev)
 		printk("v4 support\n");
 	}
 
-#ifdef CONFIG_T6XX_HWVER_R0P0
+#ifdef CONFIG_MIDGARD_HWVER_R0P0
 	platform->sclk_g3d = clk_get(dev, "aclk_g3d");
 	if(IS_ERR(platform->sclk_g3d)) {
 		printk(KERN_ERR "failed to clk_get [aclk_g3d]\n");
 		goto out;
 	}
-#else /* CONFIG_T6XX_HWVER_R0P0 */
+#else /* CONFIG_MIDGARD_HWVER_R0P0 */
 	{
 		struct clk *mpll = NULL;
 		mpll = clk_get(dev, "mout_mpll_user");
@@ -601,7 +607,7 @@ static int kbase_platform_power_clock_init(kbase_device *kbdev)
 			goto out;
 		}
 	}
-#endif /*  CONFIG_T6XX_HWVER_R0P0 */
+#endif /*  CONFIG_MIDGARD_HWVER_R0P0 */
 	(void) clk_prepare_enable(platform->sclk_g3d);
 	return 0;
 out:
@@ -662,27 +668,26 @@ static int kbase_platform_clock_off(struct kbase_device *kbdev)
 }
 
 /**
- * Report GPU power status
- */
-static inline int kbase_platform_is_power_on(void)
-{
-	return ((__raw_readl(EXYNOS5_G3D_STATUS) & 0x7) == 0x7) ? 1 : 0;
-}
-
-/**
  * Enable GPU power
  */
 static int kbase_platform_power_on(void)
 {
 	int timeout;
+	void *g3d_status_reg;
 
-	/* Turn on G3D  */
-	__raw_writel(0x7, EXYNOS5_G3D_CONFIGURATION);
+	/* Turn on G3D power */
+	if (soc_is_exynos5250()) {
+		g3d_status_reg = EXYNOS5_G3D_STATUS;
+		__raw_writel(0x7, EXYNOS5_G3D_CONFIGURATION);
+	}
+	else if (soc_is_exynos542x()) {
+		g3d_status_reg = EXYNOS5420_G3D_STATUS;
+		__raw_writel(0x7, EXYNOS5420_G3D_CONFIGURATION);
+	}
 
 	/* Wait for G3D power stability */
 	timeout = 1000;
-
-	while((__raw_readl(EXYNOS5_G3D_STATUS) & 0x7) != 0x7) {
+	while((__raw_readl(g3d_status_reg) & 0x7) != 0x7) {
 		if(timeout == 0) {
 			/* need to call panic  */
 			panic("failed to turn on g3d via g3d_configuration\n");
@@ -701,14 +706,21 @@ static int kbase_platform_power_on(void)
 static int kbase_platform_power_off(void)
 {
 	int timeout;
+	void *g3d_status_reg;
 
 	/* Turn off G3D  */
-	__raw_writel(0x0, EXYNOS5_G3D_CONFIGURATION);
+	if (soc_is_exynos5250()) {
+		g3d_status_reg = EXYNOS5_G3D_STATUS;
+		__raw_writel(0x0, EXYNOS5_G3D_CONFIGURATION);
+	}
+	else if (soc_is_exynos542x()) {
+		g3d_status_reg = EXYNOS5420_G3D_STATUS;
+		__raw_writel(0x0, EXYNOS5420_G3D_CONFIGURATION);
+	}
 
 	/* Wait for G3D power stability */
 	timeout = 1000;
-
-	while(__raw_readl(EXYNOS5_G3D_STATUS) & 0x7) {
+	while(__raw_readl(g3d_status_reg) & 0x7) {
 		if(timeout == 0) {
 			/* need to call panic */
 			panic( "failed to turn off g3d via g3d_configuration\n");
@@ -786,7 +798,7 @@ int kbase_platform_cmu_pmu_control(struct kbase_device *kbdev, int control)
 	return 0;
 }
 
-#ifdef CONFIG_MALI_T6XX_DEBUG_SYS
+#ifdef CONFIG_MALI_MIDGARD_DEBUG_SYS
 /** The sysfs file @c clock, fbdev.
  *
  * This is used for obtaining information about the vithar
@@ -820,10 +832,9 @@ static ssize_t mali_sysfs_show_clock(struct device *dev,
 static ssize_t mali_sysfs_set_clock(struct device *dev,
 	struct device_attribute *attr, const char *buf, size_t count)
 {
-#ifdef CONFIG_MALI_T6XX_DVFS
+#ifdef CONFIG_MALI_MIDGARD_DVFS
 	struct kbase_device *kbdev = dev_get_drvdata(dev);
 	struct exynos_context *platform;
-	unsigned int tmp = 0;
 	unsigned long freq;
 	int level;
 
@@ -854,12 +865,7 @@ static ssize_t mali_sysfs_set_clock(struct device *dev,
 	}
 
 	kbase_platform_dvfs_set_level(kbdev, level);
-
-	/* Waiting for clock is stable */
-	do {
-		tmp = __raw_readl(EXYNOS5_CLKDIV_STAT_TOP0);
-	} while (tmp & 0x1000000);
-#endif /* CONFIG_MALI_T6XX_DVFS */
+#endif /* CONFIG_MALI_MIDGARD_DVFS */
 	return count;
 }
 DEVICE_ATTR(clock, S_IRUGO|S_IWUSR, mali_sysfs_show_clock,
@@ -921,255 +927,12 @@ static ssize_t mali_sysfs_show_memory(struct device *dev,
 	if (!kbdev)
 		return -ENODEV;
 
+	ret = sprintf(buf, "%lu bytes\n",
+		      atomic_read(&kbdev->memdev.used_pages) * PAGE_SIZE);
+
 	return ret;
 }
 DEVICE_ATTR(memory, S_IRUGO, mali_sysfs_show_memory, NULL);
-
-typedef enum {
-	L1_I_tag_RAM = 0x00,
-	L1_I_data_RAM = 0x01,
-	L1_I_BTB_RAM = 0x02,
-	L1_I_GHB_RAM = 0x03,
-	L1_I_TLB_RAM = 0x04,
-	L1_I_indirect_predictor_RAM = 0x05,
-	L1_D_tag_RAM = 0x08,
-	L1_D_data_RAM = 0x09,
-	L1_D_load_TLB_array = 0x0A,
-	L1_D_store_TLB_array = 0x0B,
-	L2_tag_RAM = 0x10,
-	L2_data_RAM = 0x11,
-	L2_snoop_tag_RAM = 0x12,
-	L2_data_ECC_RAM = 0x13,
-	L2_dirty_RAM = 0x14,
-	L2_TLB_RAM = 0x18
-} RAMID_type;
-
-static inline void asm_ramindex_mrc(u32 *DL1Data0, u32 *DL1Data1,
-	u32 *DL1Data2, u32 *DL1Data3)
-{
-	u32 val;
-
-	if(DL1Data0)
-	{
-		asm volatile("mrc p15, 0, %0, c15, c1, 0" : "=r" (val));
-		*DL1Data0 = val;
-	}
-	if(DL1Data1)
-	{
-		asm volatile("mrc p15, 0, %0, c15, c1, 1" : "=r" (val));
-		*DL1Data1 = val;
-	}
-	if(DL1Data2)
-	{
-		asm volatile("mrc p15, 0, %0, c15, c1, 2" : "=r" (val));
-		*DL1Data2 = val;
-	}
-	if(DL1Data3)
-	{
-		asm volatile("mrc p15, 0, %0, c15, c1, 3" : "=r" (val));
-		*DL1Data3 = val;
-	}
-}
-
-static inline void asm_ramindex_mcr(u32 val)
-{
-	asm volatile("mcr p15, 0, %0, c15, c4, 0" : : "r" (val));
-	asm volatile("dsb");
-	asm volatile("isb");
-}
-
-static void get_tlb_array(u32 val, u32 *DL1Data0, u32 *DL1Data1,
-	u32 *DL1Data2, u32 *DL1Data3)
-{
-	asm_ramindex_mcr(val);
-	asm_ramindex_mrc(DL1Data0, DL1Data1, DL1Data2, DL1Data3);
-}
-
-static RAMID_type ramindex = L1_D_load_TLB_array;
-static ssize_t mali_sysfs_show_dtlb(struct device *dev,
-	struct device_attribute *attr, char *buf)
-{
-	struct kbase_device *kbdev;
-	ssize_t ret = 0;
-	int entries, ways;
-	u32 DL1Data0 = 0, DL1Data1 = 0, DL1Data2 = 0, DL1Data3 = 0;
-
-	kbdev = dev_get_drvdata(dev);
-
-	if (!kbdev)
-		return -ENODEV;
-
-	/* L1-I tag RAM */
-	if(ramindex == L1_I_tag_RAM)
-	{
-		printk("Not implemented yet\n");
-	}
-	/* L1-I data RAM */
-	else if(ramindex == L1_I_data_RAM)
-	{
-		printk("Not implemented yet\n");
-	}
-	/* L1-I BTB RAM */
-	else if(ramindex == L1_I_BTB_RAM)
-	{
-		printk("Not implemented yet\n");
-	}
-	/* L1-I GHB RAM */
-	else if(ramindex == L1_I_GHB_RAM)
-	{
-		printk("Not implemented yet\n");
-	}
-	/* L1-I TLB RAM */
-	else if(ramindex == L1_I_TLB_RAM)
-	{
-		printk("L1-I TLB RAM\n");
-		for(entries = 0 ; entries < 32 ; entries++)
-		{
-			get_tlb_array((((u8)ramindex) << 24) + entries, &DL1Data0, &DL1Data1, &DL1Data2, NULL);
-			printk("entries[%d], DL1Data0=%08x, DL1Data1=%08x DL1Data2=%08x\n", entries, DL1Data0, DL1Data1 & 0xffff, 0x0);
-		}
-	}
-	/* L1-I indirect predictor RAM */
-	else if(ramindex == L1_I_indirect_predictor_RAM)
-	{
-		printk("Not implemented yet\n");
-	}
-	/* L1-D tag RAM */
-	else if(ramindex == L1_D_tag_RAM)
-	{
-		printk("Not implemented yet\n");
-	}
-	/* L1-D data RAM */
-	else if(ramindex == L1_D_data_RAM)
-	{
-		printk("Not implemented yet\n");
-	}
-	/* L1-D load TLB array */
-	else if(ramindex == L1_D_load_TLB_array)
-	{
-		printk("L1-D load TLB array\n");
-		for(entries = 0 ; entries < 32 ; entries++)
-		{
-		get_tlb_array((((u8)ramindex) << 24) + entries, &DL1Data0, &DL1Data1, &DL1Data2, &DL1Data3);
-		printk("entries[%d], DL1Data0=%08x, DL1Data1=%08x, DL1Data2=%08x, DL1Data3=%08x\n", entries, DL1Data0, DL1Data1, DL1Data2, DL1Data3 & 0x3f);
-		}
-	}
-	/* L1-D store TLB array */
-	else if(ramindex == L1_D_store_TLB_array)
-	{
-		printk("\nL1-D store TLB array\n");
-		for(entries = 0 ; entries < 32 ; entries++)
-		{
-			get_tlb_array((((u8)ramindex) << 24) + entries, &DL1Data0, &DL1Data1, &DL1Data2, &DL1Data3);
-			printk("entries[%d], DL1Data0=%08x, DL1Data1=%08x, DL1Data2=%08x, DL1Data3=%08x\n", entries, DL1Data0, DL1Data1, DL1Data2, DL1Data3 & 0x3f);
-		}
-	}
-	/* L2 tag RAM */
-	else if(ramindex == L2_tag_RAM)
-	{
-		printk("Not implemented yet\n");
-	}
-	/* L2 data RAM */
-	else if(ramindex == L2_data_RAM)
-	{
-		printk("Not implemented yet\n");
-	}
-	/* L2 snoop tag RAM */
-	else if(ramindex == L2_snoop_tag_RAM)
-	{
-		printk("Not implemented yet\n");
-	}
-	/* L2 data ECC RAM */
-	else if(ramindex == L2_data_ECC_RAM)
-	{
-		printk("Not implemented yet\n");
-	}
-	/* L2 dirty RAM */
-	else if(ramindex == L2_dirty_RAM)
-	{
-		printk("Not implemented yet\n");
-	}
-	/* L2 TLB array */
-	else if(ramindex == L2_TLB_RAM)
-	{
-		printk("\nL2 TLB array\n");
-		for(ways = 0 ; ways < 4 ; ways++)
-		{
-			for(entries = 0 ; entries < 512 ; entries++)
-			{
-				get_tlb_array((ramindex << 24) + (ways << 18) + entries, &DL1Data0, &DL1Data1, &DL1Data2, &DL1Data3);
-				printk("ways[%d]:entries[%d], DL1Data0=%08x, DL1Data1=%08x, DL1Data2=%08x, DL1Data3=%08x\n", ways, entries, DL1Data0, DL1Data1, DL1Data2, DL1Data3);
-			}
-		}
-	}
-
-	ret += snprintf(buf+ret, PAGE_SIZE-ret, "Succeeded...\n");
-
-	if (ret < PAGE_SIZE - 1)
-		ret += snprintf(buf+ret, PAGE_SIZE-ret, "\n");
-	else
-	{
-		buf[PAGE_SIZE-2] = '\n';
-		buf[PAGE_SIZE-1] = '\0';
-		ret = PAGE_SIZE-1;
-	}
-	return ret;
-}
-
-static ssize_t mali_sysfs_set_dtlb(struct device *dev,
-	struct device_attribute *attr, const char *buf, size_t count)
-{
-	struct kbase_device *kbdev;
-	kbdev = dev_get_drvdata(dev);
-
-	if (!kbdev)
-		return -ENODEV;
-
-	if (sysfs_streq("L1_I_tag_RAM", buf)) {
-		ramindex = L1_I_tag_RAM;
-	} else if (sysfs_streq("L1_I_data_RAM", buf)) {
-		ramindex = L1_I_data_RAM;
-	} else if (sysfs_streq("L1_I_BTB_RAM", buf)) {
-		ramindex = L1_I_BTB_RAM;
-	} else if (sysfs_streq("L1_I_GHB_RAM", buf)) {
-		ramindex = L1_I_GHB_RAM;
-	} else if (sysfs_streq("L1_I_TLB_RAM", buf)) {
-		ramindex = L1_I_TLB_RAM;
-	} else if (sysfs_streq("L1_I_indirect_predictor_RAM", buf)) {
-		ramindex = L1_I_indirect_predictor_RAM;
-	} else if (sysfs_streq("L1_D_tag_RAM", buf)) {
-		ramindex = L1_D_tag_RAM;
-	} else if (sysfs_streq("L1_D_data_RAM", buf)) {
-		ramindex = L1_D_data_RAM;
-	} else if (sysfs_streq("L1_D_load_TLB_array", buf)) {
-		ramindex = L1_D_load_TLB_array;
-	} else if (sysfs_streq("L1_D_store_TLB_array", buf)) {
-		ramindex = L1_D_store_TLB_array;
-	} else if (sysfs_streq("L2_tag_RAM", buf)) {
-		ramindex = L2_tag_RAM;
-	} else if (sysfs_streq("L2_data_RAM", buf)) {
-		ramindex = L2_data_RAM;
-	} else if (sysfs_streq("L2_snoop_tag_RAM", buf)) {
-		ramindex = L2_snoop_tag_RAM;
-	} else if (sysfs_streq("L2_data_ECC_RAM", buf)) {
-		ramindex = L2_data_ECC_RAM;
-	} else if (sysfs_streq("L2_dirty_RAM", buf)) {
-		ramindex = L2_dirty_RAM;
-	} else if (sysfs_streq("L2_TLB_RAM", buf)) {
-		ramindex = L2_TLB_RAM;
-	} else {
-		printk("Invalid value....\n\n");
-		printk("Available options are one of below\n");
-		printk("L1_I_tag_RAM, L1_I_data_RAM, L1_I_BTB_RAM\n");
-		printk("L1_I_GHB_RAM, L1_I_TLB_RAM, L1_I_indirect_predictor_RAM\n");
-		printk("L1_D_tag_RAM, L1_D_data_RAM, L1_D_load_TLB_array, L1_D_store_TLB_array\n");
-		printk("L2_tag_RAM, L2_data_RAM, L2_snoop_tag_RAM, L2_data_ECC_RAM\n");
-		printk("L2_dirty_RAM, L2_TLB_RAM\n");
-	}
-
-	return count;
-}
-DEVICE_ATTR(dtlb, S_IRUGO|S_IWUSR, mali_sysfs_show_dtlb, mali_sysfs_set_dtlb);
 
 static ssize_t mali_sysfs_show_vol(struct device *dev,
 	struct device_attribute *attr, char *buf)
@@ -1270,7 +1033,7 @@ static ssize_t mali_sysfs_set_clkout(struct device *dev,
 DEVICE_ATTR(clkout, S_IRUGO|S_IWUSR, mali_sysfs_show_clkout,
 	mali_sysfs_set_clkout);
 
-#ifdef CONFIG_MALI_T6XX_DVFS
+#ifdef CONFIG_MALI_MIDGARD_DVFS
 static ssize_t mali_sysfs_show_dvfs(struct device *dev,
 	struct device_attribute *attr, char *buf)
 {
@@ -1329,7 +1092,7 @@ static ssize_t mali_sysfs_set_dvfs(struct device *dev,
 	return count;
 }
 DEVICE_ATTR(dvfs, S_IRUGO|S_IWUSR, mali_sysfs_show_dvfs, mali_sysfs_set_dvfs);
-#endif /* CONFIG_MALI_T6XX_DVFS */
+#endif /* CONFIG_MALI_MIDGARD_DVFS */
 
 #ifdef MALI_DVFS_ASV_ENABLE
 static ssize_t mali_sysfs_show_asv(struct device *dev,
@@ -1339,6 +1102,8 @@ static ssize_t mali_sysfs_show_asv(struct device *dev,
 	struct kbase_device *kbdev;
 	ssize_t ret = 0;
 	int i;
+	int asv_group;
+
 	kbdev = dev_get_drvdata(dev);
 
 	if (!kbdev)
@@ -1346,8 +1111,15 @@ static ssize_t mali_sysfs_show_asv(struct device *dev,
 	if (!buf)
 		return -EINVAL;
 
-	ret += scnprintf(buf, PAGE_SIZE, "asv group:%d exynos_lot_id:%d\n",
-		exynos_result_of_asv & 0xf, exynos_lot_id);
+	asv_group = exynos_asv_group_get(ID_G3D);
+	if (soc_is_exynos5250()) {
+		ret += scnprintf(buf, PAGE_SIZE, "asv group:%d exynos_lot_id:%d\n",
+				asv_group, exynos_lot_id);
+	} else if (soc_is_exynos542x()) {
+		ret += scnprintf(buf, PAGE_SIZE, "asv group:%d mp%d\n",
+				asv_group, exynos5420_is_g3d_mp6() ? 6 : 4);
+	}
+
 	for (i = MALI_DVFS_STEP - 1; i >= 0; i--) {
 		ret += scnprintf(buf + ret, PAGE_SIZE - ret, "%u:%d\n",
 				mali_dvfs_infotbl[i].clock,
@@ -1398,12 +1170,6 @@ static int kbase_platform_create_sysfs_file(struct device *dev)
 		goto out;
 	}
 
-	if (device_create_file(dev, &dev_attr_dtlb))
-	{
-		dev_err(dev, "Couldn't create sysfs file [dtlb]\n");
-		goto out;
-	}
-
 	if (device_create_file(dev, &dev_attr_vol))
 	{
 		dev_err(dev, "Couldn't create sysfs file [vol]\n");
@@ -1415,7 +1181,7 @@ static int kbase_platform_create_sysfs_file(struct device *dev)
 		dev_err(dev, "Couldn't create sysfs file [clkout]\n");
 		goto out;
 	}
-#ifdef CONFIG_MALI_T6XX_DVFS
+#ifdef CONFIG_MALI_MIDGARD_DVFS
 	if (device_create_file(dev, &dev_attr_dvfs))
 	{
 		dev_err(dev, "Couldn't create sysfs file [dvfs]\n");
@@ -1427,7 +1193,7 @@ static int kbase_platform_create_sysfs_file(struct device *dev)
 		goto out;
 	}
 #endif
-#endif /* CONFIG_MALI_T6XX_DVFS */
+#endif /* CONFIG_MALI_MIDGARD_DVFS */
 #ifdef CONFIG_MALI_HWC_TRACE
 	if (!mali_setup_system_tracing(dev))
 		goto out;
@@ -1443,20 +1209,19 @@ void kbase_platform_remove_sysfs_file(struct device *dev)
 	device_remove_file(dev, &dev_attr_clock);
 	device_remove_file(dev, &dev_attr_available_frequencies);
 	device_remove_file(dev, &dev_attr_fbdev);
-	device_remove_file(dev, &dev_attr_dtlb);
 	device_remove_file(dev, &dev_attr_vol);
 	device_remove_file(dev, &dev_attr_clkout);
-#ifdef CONFIG_MALI_T6XX_DVFS
+#ifdef CONFIG_MALI_MIDGARD_DVFS
 	device_remove_file(dev, &dev_attr_dvfs);
 #ifdef MALI_DVFS_ASV_ENABLE
 	device_remove_file(dev, &dev_attr_asv);
 #endif
-#endif /* CONFIG_MALI_T6XX_DVFS */
+#endif /* CONFIG_MALI_MIDGARD_DVFS */
 #ifdef CONFIG_MALI_HWC_TRACE
 	mali_cleanup_system_tracing(dev);
 #endif /* CONFIG_MALI_HWC_TRACE */
 }
-#endif /* CONFIG_MALI_T6XX_DEBUG_SYS */
+#endif /* CONFIG_MALI_MIDGARD_DEBUG_SYS */
 
 mali_error kbase_platform_init(kbase_device *kbdev)
 {
@@ -1471,7 +1236,10 @@ mali_error kbase_platform_init(kbase_device *kbdev)
 
 	kbdev->platform_context = (void *) platform;
 
-	platform->t6xx_default_clock = 533000000;
+	if (soc_is_exynos542x())
+		platform->t6xx_default_clock = 420000000;
+	else
+		platform->t6xx_default_clock = 533000000;
 
 	platform->cmu_pmu_status = 0;
 	spin_lock_init(&platform->cmu_pmu_lock);
@@ -1488,18 +1256,18 @@ mali_error kbase_platform_init(kbase_device *kbdev)
 	}
 #endif /* CONFIG_REGULATOR */
 
-#ifdef CONFIG_MALI_T6XX_DVFS
+#ifdef CONFIG_MALI_MIDGARD_DVFS
 	if (!kbase_platform_dvfs_init(kbdev))
 		goto dvfs_init_fail;
-#endif /* CONFIG_MALI_T6XX_DVFS */
+#endif /* CONFIG_MALI_MIDGARD_DVFS */
 
 	/* Enable power */
 	kbase_platform_cmu_pmu_control(kbdev, 1);
 	return MALI_ERROR_NONE;
 
-#ifdef CONFIG_MALI_T6XX_DVFS
+#ifdef CONFIG_MALI_MIDGARD_DVFS
 dvfs_init_fail:
-#endif /* CONFIG_MALI_T6XX_DVFS */
+#endif /* CONFIG_MALI_MIDGARD_DVFS */
 #ifdef CONFIG_REGULATOR
 	kbase_platform_regulator_disable();
 regulator_init_fail:
@@ -1516,9 +1284,9 @@ void kbase_platform_term(kbase_device *kbdev)
 
 	platform = (struct exynos_context *) kbdev->platform_context;
 
-#ifdef CONFIG_MALI_T6XX_DVFS
+#ifdef CONFIG_MALI_MIDGARD_DVFS
 	kbase_platform_dvfs_term();
-#endif /* CONFIG_MALI_T6XX_DVFS */
+#endif /* CONFIG_MALI_MIDGARD_DVFS */
 
 	/* Disable power */
 	kbase_platform_cmu_pmu_control(kbdev, 0);
@@ -1532,14 +1300,14 @@ void kbase_platform_term(kbase_device *kbdev)
 
 #ifdef CONFIG_REGULATOR
 static struct regulator *g3d_regulator=NULL;
-#ifdef CONFIG_T6XX_HWVER_R0P0
+#ifdef CONFIG_MIDGARD_HWVER_R0P0
 static int mali_gpu_vol = 1250000; /* 1.25V @ 533 MHz */
 #else
 static int mali_gpu_vol = 1050000; /* 1.05V @ 266 MHz */
-#endif /*  CONFIG_T6XX_HWVER_R0P0 */
+#endif /*  CONFIG_MIDGARD_HWVER_R0P0 */
 #endif /* CONFIG_REGULATOR */
 
-#ifdef CONFIG_MALI_T6XX_DVFS
+#ifdef CONFIG_MALI_MIDGARD_DVFS
 /*
  * Weighted moving average support for signed integer data
  * with 7-bits of precision (not currently used; all data
@@ -1646,19 +1414,6 @@ static void mali_dvfs_event_proc(struct work_struct *w)
 					(exynos_result_of_asv & 0xf);
 			dvfs_status.asv_need_update = DVFS_NOT_UPDATE_ASV_TBL;
 		}
-	} else if (soc_is_exynos5420()) {
-#ifdef CONFIG_ARM_EXYNOS5420_ASV
-		int i;
-		unsigned int asv_volt;
-
-		for (i = 0; i < MALI_DVFS_STEP; i++) {
-			asv_volt = get_match_volt(ID_G3D,
-					mali_dvfs_infotbl_exynos5420[i].clock
-						/ 1000);
-			if (asv_volt)
-				mali_dvfs_infotbl[i].voltage = asv_volt;
-		}
-#endif
 	}
 #endif
 	spin_unlock_irqrestore(&mali_dvfs_spinlock, irqflags);
@@ -1723,6 +1478,29 @@ int kbase_platform_dvfs_get_control_status(void)
 	return mali_dvfs_control;
 }
 
+
+static void mali_dvfs_infotbl_init_exynos542x(kbase_device *kbdev)
+{
+	int i;
+
+	if (soc_is_exynos5420())
+		mali_dvfs_infotbl = mali_dvfs_infotbl_exynos5420;
+	else
+		mali_dvfs_infotbl = mali_dvfs_infotbl_exynos5422;
+
+	for (i = 0; i < MALI_DVFS_STEP; i++) {
+		unsigned int asv_volt;
+#ifdef CONFIG_ARM_EXYNOS5420_ASV
+		asv_volt = get_match_volt(ID_G3D,
+				mali_dvfs_infotbl[i].clock / 1000);
+#else
+		asv_volt = 0;
+#endif
+		if (asv_volt)
+			mali_dvfs_infotbl[i].voltage = asv_volt;
+	}
+}
+
 int kbase_platform_dvfs_init(kbase_device *kbdev)
 {
 	unsigned long irqflags;
@@ -1756,8 +1534,8 @@ int kbase_platform_dvfs_init(kbase_device *kbdev)
 				mali_dvfs_asv_vol_tbl_special_exynos5250;
 		mali_dvfs_asv_vol_tbl = mali_dvfs_asv_vol_tbl_exynos5250;
 #endif
-	} else if (soc_is_exynos5420())
-		mali_dvfs_infotbl = mali_dvfs_infotbl_exynos5420;
+	} else if (soc_is_exynos542x())
+		mali_dvfs_infotbl_init_exynos542x(kbdev);
 
 	spin_unlock_irqrestore(&mali_dvfs_spinlock, irqflags);
 
@@ -1771,12 +1549,12 @@ void kbase_platform_dvfs_term(void)
 
 	mali_dvfs_wq = NULL;
 }
-#endif /* CONFIG_MALI_T6XX_DVFS */
+#endif /* CONFIG_MALI_MIDGARD_DVFS */
 
 
 int kbase_platform_dvfs_event(struct kbase_device *kbdev, u32 utilisation)
 {
-#ifdef CONFIG_MALI_T6XX_DVFS
+#ifdef CONFIG_MALI_MIDGARD_DVFS
 	unsigned long irqflags;
 
 	spin_lock_irqsave(&mali_dvfs_spinlock, irqflags);
@@ -1864,7 +1642,7 @@ int kbase_platform_get_default_voltage(struct device *dev, int *vol)
 	return 0;
 }
 
-#ifdef CONFIG_MALI_T6XX_DEBUG_SYS
+#ifdef CONFIG_MALI_MIDGARD_DEBUG_SYS
 int kbase_platform_get_voltage(struct device *dev, int *vol)
 {
 #ifdef CONFIG_REGULATOR
@@ -1880,9 +1658,9 @@ int kbase_platform_get_voltage(struct device *dev, int *vol)
 #endif /* CONFIG_REGULATOR */
 	return 0;
 }
-#endif /* CONFIG_MALI_T6XX_DEBUG_SYS */
+#endif /* CONFIG_MALI_MIDGARD_DEBUG_SYS */
 
-#ifdef CONFIG_MALI_T6XX_DVFS
+#ifdef CONFIG_MALI_MIDGARD_DVFS
 static int kbase_platform_set_voltage(struct device *dev, int vol)
 {
 #ifdef CONFIG_REGULATOR
@@ -1908,8 +1686,7 @@ static void kbase_platform_dvfs_set_clock(kbase_device *kbdev, int freq)
 	static struct clk * fout_gpll = NULL;
 	static int _freq = -1;
 	static unsigned long gpll_rate_prev = 0;
-	unsigned long gpll_rate = 0, aclk_400_rate = 0;
-	unsigned long tmp = 0;
+	unsigned long gpll_rate = 0;
 	struct exynos_context *platform;
 	unsigned int i = MALI_DVFS_STEP;
 
@@ -1925,13 +1702,13 @@ static void kbase_platform_dvfs_set_clock(kbase_device *kbdev, int freq)
 
 	if (mout_gpll == NULL) {
 		if (soc_is_exynos5250()) {
-			mout_gpll = clk_get(kbdev->osdev.dev, "mout_gpll");
-			fin_gpll = clk_get(kbdev->osdev.dev, "ext_xtal");
-			fout_gpll = clk_get(kbdev->osdev.dev, "fout_gpll");
-		} else if (soc_is_exynos5420()) {
-			mout_gpll = clk_get(kbdev->osdev.dev, "mout_vpll");
-			fin_gpll = clk_get(kbdev->osdev.dev, "ext_xtal");
-			fout_gpll = clk_get(kbdev->osdev.dev, "fout_vpll");
+			mout_gpll = clk_get(kbdev->dev, "mout_gpll");
+			fin_gpll = clk_get(kbdev->dev, "ext_xtal");
+			fout_gpll = clk_get(kbdev->dev, "fout_gpll");
+		} else if (soc_is_exynos542x()) {
+			mout_gpll = clk_get(kbdev->dev, "mout_vpll");
+			fin_gpll = clk_get(kbdev->dev, "ext_xtal");
+			fout_gpll = clk_get(kbdev->dev, "fout_vpll");
 		}
 		if (IS_ERR(mout_gpll) || IS_ERR(fin_gpll) || IS_ERR(fout_gpll))
 			panic("clk_get ERROR");
@@ -1943,21 +1720,15 @@ static void kbase_platform_dvfs_set_clock(kbase_device *kbdev, int freq)
 	trace_mali_dvfs_set_clock(freq);
 
 	for (i = 0; i < MALI_DVFS_STEP; i++)
-		if (freq == mali_dvfs_infotbl[i].clock) {
-			gpll_rate = freq;
-			aclk_400_rate = freq;
+		if (freq == mali_dvfs_infotbl[i].clock)
 			break;
-		}
 	if (i == MALI_DVFS_STEP)
 		return;
 
+	gpll_rate = freq;
+
 	/* if changed the GPLL rate, set rate for GPLL and wait for lock time */
 	if( gpll_rate != gpll_rate_prev) {
-		/*for stable clock input.*/
-		if (soc_is_exynos5250())
-			clk_set_rate(platform->sclk_g3d, 100000000);
-		else if (soc_is_exynos5420())
-			clk_set_rate(platform->sclk_g3d, 100000000);
 		clk_set_parent(mout_gpll, fin_gpll);
 
 		/*change gpll*/
@@ -1969,15 +1740,10 @@ static void kbase_platform_dvfs_set_clock(kbase_device *kbdev, int freq)
 	}
 
 	_freq = freq;
-	clk_set_rate(platform->sclk_g3d, aclk_400_rate);
 
-	/* Waiting for clock is stable */
-	do {
-		tmp = __raw_readl(/*EXYNOS5_CLKDIV_STAT_TOP0*/EXYNOS_CLKREG(0x10610));
-	} while (tmp & 0x1000000);
 #if MALI_DVFS_DEBUG
 	printk(KERN_DEBUG "dvfs_set_clock GPLL : %lu, ACLK_400 : %luMhz\n",
-			gpll_rate, aclk_400_rate);
+			gpll_rate, clk_get_rate(platform->sclk_g3d));
 #endif /* MALI_DVFS_DEBUG */
 	return;
 }
@@ -2029,7 +1795,26 @@ static void kbase_platform_dvfs_set_level(kbase_device *kbdev, int level)
 	}
 	level_prev = level;
 }
-#endif /* CONFIG_MALI_T6XX_DVFS */
+
+static void kbase_platform_dvfs_set_max(kbase_device *kbdev)
+{
+	int i, level;
+
+	/*
+	 * Firmware may initialize the GPU clocks at a rate higher than the
+	 * one we suspended at. Set the maximum frequency and voltage at
+	 * suspend time so that we don't under-volt the GPU during resume.
+	 */
+	for (i = 0; i < MALI_DVFS_STEP; i++)
+		if (mali_dvfs_infotbl[i].max_threshold == 100) {
+			level = i;
+			break;
+		}
+
+	kbase_platform_dvfs_set_level(kbdev, level);
+	mali_dvfs_status_current.step = level;
+}
+#endif /* CONFIG_MALI_MIDGARD_DVFS */
 
 #ifdef MALI_DVFS_ASV_ENABLE
 static int kbase_platform_asv_set(int enable)
@@ -2048,7 +1833,7 @@ static int kbase_platform_asv_set(int enable)
 }
 #endif /* MALI_DVFS_ASV_ENABLE */
 
-#if defined (CONFIG_MALI_HWC_TRACE) && defined (CONFIG_MALI_T6XX_DEBUG_SYS)
+#if defined (CONFIG_MALI_HWC_TRACE) && defined (CONFIG_MALI_MIDGARD_DEBUG_SYS)
 /*
  * Mali hardware performance counter trace support.  Each counter
  * has a corresponding trace event.  To use, enable events and write
@@ -2327,6 +2112,7 @@ struct mali_hwcounter_state {
 	kbase_uk_hwcnt_setup setup;		/* hwcounter setup block */
 	bool active;				/* collecting data */
 	u32 last_read[MALI_HWC_TOTAL];		/* last counter value read */
+	kbase_hwc_dma_mapping handle;		/* counter data buffer handle */
 };
 static struct mali_hwcounter_state mali_hwcs;
 static struct mutex mali_hwcounter_mutex;
@@ -2712,7 +2498,8 @@ static int mali_hwcounter_polling_start(struct kbase_device *kbdev)
 			return -ENOSPC;
 		}
 		mali_hwcs.buf = kbase_va_alloc(mali_hwcs.ctx,
-					       MALI_HWC_DUMP_SIZE);
+					       MALI_HWC_DUMP_SIZE,
+					       &mali_hwcs.handle);
 		mali_hwcs.setup.dump_buffer = (uintptr_t) mali_hwcs.buf;
 
 		error = kbase_instr_hwcnt_enable(mali_hwcs.ctx,
@@ -2720,7 +2507,7 @@ static int mali_hwcounter_polling_start(struct kbase_device *kbdev)
 		if (error != MALI_ERROR_NONE) {
 			pr_err("%s: cannot enable hw counters\n", __func__);
 
-			kbase_va_free(mali_hwcs.ctx, mali_hwcs.buf);
+			kbase_va_free(mali_hwcs.ctx, &mali_hwcs.handle);
 			mali_hwcs.buf = NULL;
 
 			kbase_destroy_context(mali_hwcs.ctx);
@@ -2753,7 +2540,7 @@ static void mali_hwcounter_polling_stop(struct kbase_device *kbdev)
 
 		kbase_instr_hwcnt_disable(mali_hwcs.ctx);
 
-		kbase_va_free(mali_hwcs.ctx, mali_hwcs.buf);
+		kbase_va_free(mali_hwcs.ctx, &mali_hwcs.handle);
 		mali_hwcs.buf = NULL;
 
 		kbase_destroy_context(mali_hwcs.ctx);
@@ -2812,4 +2599,4 @@ static void mali_cleanup_system_tracing(struct device *dev)
 	device_remove_file(dev, &dev_attr_hwc_enable);
 	mutex_destroy(&mali_hwcounter_mutex);
 }
-#endif /* CONFIG_MALI_HWC_TRACE && CONFIG_MALI_T6XX_DEBUG_SYS */
+#endif /* CONFIG_MALI_HWC_TRACE && CONFIG_MALI_MIDGARD_DEBUG_SYS */
