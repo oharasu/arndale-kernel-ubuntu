@@ -36,7 +36,7 @@
 #include <linux/fb.h>
 #include <linux/clk.h>
 #include <mach/regs-clock.h>
-#include <mach/pmu.h>
+//#include <mach/pmu.h>
 #include <mach/regs-pmu.h>
 #include <asm/delay.h>
 #include <mach/map.h>
