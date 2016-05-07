@@ -37,11 +37,15 @@ make O=out exynos5250-arndale_defconfig
 make O=out -j${thread_num} uImage || exit
 make O=out exynos5250-arndale.dtb
 make O=out -j${thread_num} modules
-make O=out -j${thread_num} INSTALL_MOD_PATH=MOD_INSTALL modules_install
-make O=out -j${thread_num} INSTALL_MOD_PATH=MOD_INSTALL firmware_install
+#make O=out -j${thread_num} INSTALL_MOD_PATH=MOD_INSTALL modules_install
+#make O=out -j${thread_num} INSTALL_MOD_PATH=MOD_INSTALL firmware_install
+make O=out -j${thread_num} KBUILD_DEBARCH=armhf KBUILD_IMAGE=uImage deb-pkg
 rm .scmversion
 if [[ $? == "0" ]]; then
     echoc green "Build kernel, all success."
     echoc blue  out/arch/arm/boot/uImage
     echoc blue  out/arch/arm/boot/dts/exynos5250-arndale.dtb
+    echoc blue  linux-headers-3.10.37+_3.10.37+-2_armhf.deb
+    echoc blue  linux-image-3.10.37+_3.10.37+-2_armhf.deb
+    echoc blue  linux-libc-dev_3.10.37+-2_armhf.deb
 fi
