@@ -35,6 +35,10 @@
 #include <linux/workqueue.h>
 #include <linux/of.h>
 #include <linux/of_gpio.h>
+#include <linux/platform_device.h>
+
+#include <mach/gpio.h>
+#include <plat/gpio-cfg.h>
 
 #include "dw_mmc.h"
 
@@ -751,9 +755,41 @@ static void dw_mci_request(struct mmc_host *mmc, struct mmc_request *mrq)
 {
 	struct dw_mci_slot *slot = mmc_priv(mmc);
 	struct dw_mci *host = slot->host;
+    
+    // delay for sdio
+    ktime_t expr;
+    u64 add_time = 50000; /* 50us */
+    int timeout = 100000;
 
 	WARN_ON(slot->mrq);
+    
+    // delay for sdio
+    do {
+		if (mrq->cmd->opcode == MMC_STOP_TRANSMISSION)
+			break;
 
+		if (mci_readl(host, STATUS) & (1 << 9)) {
+			if (!timeout) {
+				printk(KERN_ERR "%s: Data0: Never released\n",
+						mmc_hostname(mmc));
+				mrq->cmd->error = -ENOTRECOVERABLE;
+				mmc_request_done(mmc, mrq);
+				return;
+			}
+			
+			expr = ktime_add_ns(ktime_get(), add_time);
+			set_current_state(TASK_UNINTERRUPTIBLE);
+			schedule_hrtimeout(&expr, HRTIMER_MODE_ABS);
+
+			timeout--;
+		} else {
+            //if (!strcmp(mmc_hostname(mmc), "mmc1")) {
+            //    dev_info(host->dev, "%s is not busy", mmc_hostname(mmc));
+            //}
+			break;
+        }
+	} while(1);
+    
 	/*
 	 * The check for card presence and queueing of the request must be
 	 * atomic, otherwise the card could be removed in between and the
@@ -2172,6 +2208,65 @@ static struct dw_mci_board *dw_mci_parse_dt(struct dw_mci *host)
 }
 #endif /* CONFIG_OF */
 
+void setupArndaleWifi(struct device *dev)
+{
+    int err;
+	int gpio;
+    
+    if (!dev->of_node)
+		return;
+        
+     if (!of_find_property(dev->of_node, "arndale-wifi-reset", NULL) ||
+        !of_find_property(dev->of_node, "arndale-wifi-wow", NULL)) {
+         return;
+     }   
+
+    // reset
+	gpio = of_get_named_gpio(dev->of_node, "arndale-wifi-reset", 0);
+	if (!gpio_is_valid(gpio)){
+        dev_err(dev, "unable to find wifi-reset");
+		return;
+    } else {
+        dev_info(dev, "wifi-reset value = %d", gpio_get_value(gpio));
+    }
+    
+	err = gpio_request_one(gpio, GPIOF_OUT_INIT_LOW, "arndale-wifi-reset");
+    if (err)
+		dev_err(dev, "can't request wifi-reset gpio %d", gpio);
+	else
+		gpio_free(gpio);
+    mdelay(1);
+    err = gpio_request_one(gpio, GPIOF_OUT_INIT_HIGH, "arndale-wifi-reset");
+    if (err)
+		dev_err(dev, "can't request wifi-reset gpio %d", gpio);
+	else
+		gpio_free(gpio);
+
+    // wow
+    gpio = of_get_named_gpio(dev->of_node, "arndale-wifi-wow", 0);
+	if (!gpio_is_valid(gpio)){
+        dev_err(dev, "unable to find wifi-wow");
+		return;
+    } else {
+        dev_info(dev, "wifi-wow value = %d", gpio_get_value(gpio));
+    }
+    
+	err = gpio_request_one(gpio, GPIOF_OUT_INIT_LOW, "arndale-wifi-wow");
+    if (err)
+		dev_err(dev, "can't request ehci wifi-wow gpio %d", gpio);
+	else
+		gpio_free(gpio);
+    mdelay(1);
+    err = gpio_request_one(gpio, GPIOF_OUT_INIT_HIGH, "arndale-wifi-wow");
+    if (err)
+		dev_err(dev, "can't request ehci wifi-wow gpio %d", gpio);
+	else
+		gpio_free(gpio);
+        
+    dev_info(dev, "Turn on Arndale wifi sdio card !");
+	
+}
+
 int dw_mci_probe(struct dw_mci *host)
 {
 	const struct dw_mci_drv_data *drv_data = host->drv_data;
@@ -2235,6 +2330,8 @@ int dw_mci_probe(struct dw_mci *host)
 		ret = -ENODEV;
 		goto err_clk_ciu;
 	}
+    
+    setupArndaleWifi(host->dev);
 
 	host->quirks = host->pdata->quirks;
 

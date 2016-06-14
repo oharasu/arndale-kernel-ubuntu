@@ -357,7 +357,24 @@
 	};
 
 	dwmmc_1: dwmmc1@12210000 {
-		status = "disabled";
+		num-slots = <1>;
+		supports-highspeed;
+        broken-cd;
+		fifo-depth = <0x80>;
+		card-detect-delay = <200>;
+		samsung,dw-mshc-ciu-div = <1>;
+		samsung,dw-mshc-sdr-timing = <1 4>;
+		samsung,dw-mshc-ddr-timing = <2 4>;
+		vmmc-supply = <&mmc_reg>;
+		pinctrl-names = "default";
+		pinctrl-0 = <&sd1_clk &sd1_cmd &sd1_bus4>;
+        arndale-wifi-reset = <&gpx3 0 1>;
+		arndale-wifi-wow = <&gpx1 0 1>;
+
+		slot@0 {
+			reg = <0>;
+            disable-wp;
+		};
 	};
 
 	dwmmc_2: dwmmc2@12220000 {
@@ -473,4 +490,12 @@
 			clock-frequency = <24000000>;
 		};
 	};
+    
+    //wlan0 {
+    //    cell-index = <0>;
+    //    compatible = "qca,ar6003-sdio";
+    //    qca,chip-pwd-l-gpios = <&gpx3 0 0>;
+        // qca,pm-enable-gpios = <&gpx1 0 0>;
+        // qca,vdd-io-supply = <&pm8019_l11>;                                                                                                                       
+    //};
 };
